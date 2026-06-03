@@ -1,0 +1,6 @@
+inhibitor
+*.o
+core.*
+vgcore.*
+.vscode/
+pseudo.md

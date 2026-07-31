@@ -93,7 +93,7 @@ void release_graphical_inhibit(DBusConnection *conn, uint32_t cookie) {
     dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT32, &cookie);
     DBusError err;
     dbus_error_init(&err);
-    DBusMesssage *reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+    DBusMessage *reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
     dbus_message_unref(msg);
     if (reply) {
         dbus_message_unref(reply);

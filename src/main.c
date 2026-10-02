@@ -1,5 +1,5 @@
-//kawr v0.1
-//updated 6/2/26
+//kawr v0.2
+//updated 9/2/26
 
 //headers
 //----------

@@ -1,5 +1,5 @@
-//kawr v0.1
-//updated 6/2/26
+//kawr v0.2
+//updated 9/2/26
 
 //headers
 //----------
@@ -44,7 +44,7 @@ InhibitMode auto_detect_mode(void) {
 }
 
 //handle stateful dbus inhibition
-uint32_t set_graphical_inhibit(int execute_lock) {
+uint32_t set_graphical_inhibit(int execute_lock, DBusConnection **conn_out) {
     DBusError err;
     DBusConnection *conn;
     DBusMessage *msg;
@@ -56,6 +56,7 @@ uint32_t set_graphical_inhibit(int execute_lock) {
     conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
     if (dbus_error_is_set (&err)) {
         dbus_error_free(&err);
+        *conn_out = NULL;
         return 0;
     }
     if (execute_lock) {
@@ -74,7 +75,33 @@ uint32_t set_graphical_inhibit(int execute_lock) {
             dbus_message_unref(reply);
         }
     }
+    *conn_out = conn;
     return cookie;
+}
+
+//release stateful dbus inhibition
+void release_graphical_inhibit(DBusConnection *conn, uint32_t cookie) {
+    if (conn == NULL) {
+        return;
+    }
+    DBusMessage *msg = dbus_message_new_method_call("org.freedesktop.ScreenSaver",
+                                                    "/org/freedesktop/ScreenSaver",
+                                                    "org.freedesktop.ScreenSaver",
+                                                    "UnInhibit");
+    DBusMessageIter args;
+    dbus_message_iter_init_append(msg, &args);
+    dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT32, &cookie);
+    DBusError err;
+    dbus_error_init(&err);
+    DBusMessage *reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
+    dbus_message_unref(msg);
+    if (reply) {
+        dbus_message_unref(reply);
+    }
+    if (dbus_error_is_set(&err)) {
+        dbus_error_free(&err);
+    }
+    dbus_connection_unref(conn);
 }
 
 //main
@@ -179,9 +206,10 @@ int main(int argc, char *argv[]) {
     //inhibit
     int execution_status = 0;
     uint32_t dbus_cookie =0;
+    DBusConnection *dbus_conn = NULL;
     switch (mode) {
         case MODE_GRAPHICAL: {
-            dbus_cookie = set_graphical_inhibit(1);
+            dbus_cookie = set_graphical_inhibit(1, &dbus_conn);
             execution_status = system(target_program_string);
             break;
         }
@@ -192,6 +220,11 @@ int main(int argc, char *argv[]) {
         
         default:
             break;
+    }
+
+    //release inhibit
+    if (mode == MODE_GRAPHICAL) {
+        release_graphical_inhibit(dbus_conn, dbus_cookie);
     }
 
     //exiting
